@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRGEN | Além de Links Estáticos</title>
+    
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- QR Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        deepBlack: '#050505',
+                        panelBlack: '#0A0A0A',
+                        borderDark: '#222222',
+                        textGray: '#888888',
+                        textDark: '#333333',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    animation: {
+                        'marquee': 'marquee 40s linear infinite',
+                        'float': 'float 8s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        marquee: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-100%)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    },
+                    backgroundImage: {
+                        'noise': "url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.05%22/%3E%3C/svg%3E')",
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #050505;
+            color: #FFFFFF;
+            cursor: none; /* Hide default cursor */
+            overflow-x: hidden;
+        }
+
+        /* Custom Cursor */
+        #cursor {
+            width: 20px;
+            height: 20px;
+            border: 1px solid white;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            mix-blend-mode: difference;
+            transition: width 0.2s, height 0.2s, background-color 0.2s;
+        }
+        #cursor.hovered {
+            width: 50px;
+            height: 50px;
+            background-color: white;
+            border-color: transparent;
+            opacity: 0.8;
+        }
+
+        /* Smoke/Fog Effect */
+        .fog-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 100%, rgba(255,255,255,0.08) 0%, rgba(5,5,5,0) 60%);
+            filter: blur(80px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Scroll Reveal Utility */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Noise Overlay for Images */
+        .noise-overlay::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.4%22/%3E%3C/svg%3E');
+            mix-blend-mode: overlay;
+            pointer-events: none;
+        }
+
+        /* Marquee Fade Edges */
+        .marquee-container {
+            mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Custom Cursor Element -->
+    <div id="cursor"></div>
+
+    <!-- Header / Nav -->
+    <nav class="fixed top-0 w-full z-50 backdrop-blur-[20px] bg-deepBlack/50 border-b border-white/0 transition-colors duration-300">
+        <div class="max-w-[1400px] mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="#" class="font-display font-bold text-xl tracking-tight z-50 hover-trigger">QR<span class="font-light opacity-80">GEN</span></a>
+            
+            <div class="hidden md:flex gap-8 absolute left-1/2 transform -translate-x-1/2">
+                <a href="#" class="text-sm font-medium text-textGray hover:text-white transition-colors hover-trigger">Produtos</a>
+                <a href="#" class="text-sm font-medium text-textGray hover:text-white transition-colors hover-trigger">Soluções</a>
+                <a href="#" class="text-sm font-medium text-textGray hover:text-white transition-colors hover-trigger">Preços</a>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <a href="#" class="text-sm font-medium text-white hover:text-gray-300 transition-colors hover-trigger">Entrar</a>
+                <a href="#" class="text-sm font-medium text-white px-5 py-2 border border-white/20 rounded-full hover:bg-white hover:text-black transition-all hover-trigger">Começar Agora</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 1. HERO SECTION -->
+    <section class="relative min-h-screen flex flex-col items-center justify-center pt-32 overflow-hidden">
+        <!-- Background Atmosphere -->
+        <div class="fog-layer animate-pulse-slow"></div>
+
+        <div class="relative z-10 text-center max-w-4xl mx-auto px-6">
+            <h1 class="font-display font-bold text-5xl md:text-8xl tracking-tighter leading-[0.9] text-white mb-8 reveal">
+                ALÉM DE<br>LINKS ESTÁTICOS.
+            </h1>
+            <p class="font-sans text-lg md:text-xl text-[#999] max-w-[600px] mx-auto mb-12 reveal delay-100">
+                Aumente o engajamento com identidades QR distintas, rastreáveis e em alta definição, projetadas para a internet moderna.
+            </p>
+            <div class="reveal delay-200">
+                <button class="bg-white text-black font-semibold text-lg px-8 py-4 rounded-full transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:scale-105 hover-trigger">
+                    Criar QR Code
+                </button>
+            </div>
+        </div>
+
+        <!-- Visual Key: Interface Emerging -->
+        <div class="mt-20 relative w-full max-w-4xl mx-auto h-[400px] reveal delay-300">
+            <!-- Simulated Glass Interface -->
+            <div class="absolute inset-x-0 bottom-0 h-[500px] bg-[#0A0A0A] border-t border-white/20 rounded-t-[30px] shadow-[0_-20px_60px_-10px_rgba(255,255,255,0.05)] transform perspective(1000px) rotateX(10deg) overflow-hidden">
+                <!-- Inner UI Mockup -->
+                <div class="flex h-full">
+                    <!-- Sidebar Mock -->
+                    <div class="w-[30%] border-r border-[#222] p-8 space-y-6 opacity-50">
+                        <div class="h-2 w-12 bg-[#333] rounded"></div>
+                        <div class="space-y-4 pt-4">
+                            <div class="h-8 w-full border border-[#222] rounded"></div>
+                            <div class="h-8 w-full border border-[#222] rounded"></div>
+                        </div>
+                    </div>
+                    <!-- Canvas Mock -->
+                    <div class="w-[70%] flex items-center justify-center relative">
+                        <div class="absolute inset-0 bg-gradient-to-t from-deepBlack via-transparent to-transparent z-20"></div>
+                        <!-- Abstract QR -->
+                        <div class="w-48 h-48 border border-white/10 bg-black flex items-center justify-center relative z-10 animate-float">
+                            <div class="w-40 h-40 bg-white mix-blend-overlay opacity-20"></div>
+                            <svg class="absolute inset-0 w-full h-full text-white/10" fill="currentColor" viewBox="0 0 100 100">
+                                <rect x="10" y="10" width="20" height="20" />
+                                <rect x="70" y="10" width="20" height="20" />
+                                <rect x="10" y="70" width="20" height="20" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Bottom Fade to merge with section below -->
+            <div class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-deepBlack to-transparent z-30"></div>
+        </div>
+    </section>
+
+    <!-- 2. SOCIAL PROOF (Marquee) -->
+    <section class="py-10 border-y border-[#111] bg-deepBlack overflow-hidden relative">
+        <div class="marquee-container w-full">
+            <div class="flex w-[200%] animate-marquee hover:[animation-play-state:paused]">
+                <!-- Logos Duplicated for loop -->
+                <div class="flex justify-around w-1/2 px-10 items-center">
+                    <span class="text-2xl font-display font-bold text-[#333] hover:text-[#AAA] transition-colors cursor-default">ACME CORP</span>
+                    <span class="text-2xl font-display font-bold text-[#333] hover:text-[#AAA] transition-colors cursor-default">NEXUS</span>
+                    <span class="text-2xl font-display font-bold text-[#333] hover:text-[#AAA] transition-colors cursor-default">VOGUE</span>
+                    <span class="text-2xl font-display font-bold text-[#333] hover:text-[#AAA] transition-colors cursor-default">ARCHITIZER</span>
+                    <span class="text-2xl font-display font-bold text-[#333] hover:text-[#AAA] transition-colors cursor-default">WIRED</span>
+                </div>
+                <div class="flex justify-around w-1/2 px-10 items-center">
+                     <span class="text-2xl font-display font-bold text-[#333] hover:text-[#AAA] transition-colors cursor-default">ACME CORP</span>
+                    <span class="text-2xl font-display font-bold text-[#333] hover:text-[#AAA] transition-colors cursor-default">NEXUS</span>
+                    <span class="text-2xl font-display font-bold text-[#333] hover:text-[#AAA] transition-colors cursor-default">VOGUE</span>
+                    <span class="text-2xl font-display font-bold text-[#333] hover:text-[#AAA] transition-colors cursor-default">ARCHITIZER</span>
+                    <span class="text-2xl font-display font-bold text-[#333] hover:text-[#AAA] transition-colors cursor-default">WIRED</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. FEATURES (Bento Grid) -->
+    <section class="py-32 px-6 max-w-[1400px] mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[600px]">
+            
+            <!-- Card 1: Identity First (Gigante) -->
+            <div class="col-span-1 md:col-span-6 bg-panelBlack border border-borderDark p-8 relative overflow-hidden group hover:border-[#444] transition-colors reveal">
+                <h3 class="font-display text-3xl font-bold mb-2">Identidade Visual</h3>
+                <p class="text-textGray text-sm mb-12">Controle total sobre cada vetor e detalhe.</p>
+                
+                <!-- Visual Mockup: Sliders -->
+                <div class="absolute bottom-0 left-0 right-0 h-[60%] bg-[#050505] border-t border-borderDark p-6 flex flex-col justify-center gap-6 group-hover:bg-[#080808] transition-colors">
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs text-[#555] font-mono"><span>RAIO DA BORDA</span><span>24PX</span></div>
+                        <div class="w-full h-[1px] bg-[#333] relative">
+                            <div class="absolute top-[-2px] left-0 w-1/3 h-[5px] bg-white"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs text-[#555] font-mono"><span>CORREÇÃO DE ERRO</span><span>ALTA</span></div>
+                         <div class="w-full h-[1px] bg-[#333] relative">
+                            <div class="absolute top-[-2px] left-0 w-2/3 h-[5px] bg-white"></div>
+                        </div>
+                    </div>
+                     <div class="flex gap-4 pt-2">
+                        <div class="w-8 h-8 rounded-full border border-white bg-transparent"></div>
+                        <div class="w-8 h-8 rounded-full border border-[#333] bg-[#222]"></div>
+                        <div class="w-8 h-8 rounded-full border border-[#333] bg-[#111]"></div>
+                     </div>
+                </div>
+            </div>
+
+            <div class="col-span-1 md:col-span-6 grid grid-rows-2 gap-6">
+                <!-- Card 2: Analytics -->
+                <div class="bg-panelBlack border border-borderDark p-8 relative overflow-hidden group hover:border-[#444] transition-colors reveal delay-100">
+                    <div class="flex justify-between items-start mb-6">
+                        <h3 class="font-display text-2xl font-bold">Dados em Tempo Real</h3>
+                        <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    </div>
+                    <!-- Minimal Graph -->
+                    <svg class="w-full h-24 overflow-visible" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:white;stop-opacity:0.2" />
+                                <stop offset="100%" style="stop-color:white;stop-opacity:0" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M0,50 Q20,40 40,60 T100,20 T150,50 T200,30 T300,10" fill="url(#grad)" stroke="white" stroke-width="1.5" vector-effect="non-scaling-stroke" />
+                        <line x1="0" y1="80" x2="300" y2="80" stroke="#222" stroke-width="1" stroke-dasharray="4 4" />
+                    </svg>
+                </div>
+
+                <!-- Card 3: Production Ready -->
+                <div class="bg-panelBlack border border-borderDark p-8 flex items-center justify-between group hover:border-[#444] transition-colors reveal delay-200">
+                    <div>
+                        <h3 class="font-display text-2xl font-bold mb-2">Pronto para Produção</h3>
+                        <p class="text-textGray text-sm">Exporte em formatos de alta fidelidade.</p>
+                    </div>
+                    <div class="flex flex-col text-right font-mono text-sm text-[#444] space-y-1">
+                        <span class="group-hover:text-white group-hover:font-bold transition-all">.SVG</span>
+                        <span class="group-hover:text-white group-hover:font-bold transition-all delay-75">.EPS</span>
+                        <span class="group-hover:text-white group-hover:font-bold transition-all delay-100">.PDF</span>
+                        <span class="group-hover:text-white group-hover:font-bold transition-all delay-150">.PNG</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. INTERACTIVE PLAYGROUND -->
+    <section class="py-32 bg-[#080808] border-y border-[#111]">
+        <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center gap-16">
+            <div class="w-full md:w-1/2 reveal">
+                <label class="block text-xs font-mono text-gray-500 mb-4 tracking-widest uppercase">TESTE AGORA</label>
+                <input type="text" id="playground-input" placeholder="Cole qualquer URL para visualizar..." 
+                    class="w-full bg-transparent border-b border-[#333] text-2xl md:text-4xl py-4 text-white placeholder-[#333] focus:outline-none focus:border-white transition-colors font-sans hover-trigger">
+                
+                <div id="playground-cta" class="mt-8 opacity-0 transition-opacity duration-700">
+                     <button class="text-sm font-medium text-black bg-white px-6 py-3 rounded-full hover:shadow-aura hover-trigger">Personalizar e Baixar</button>
+                </div>
+            </div>
+
+            <div class="w-full md:w-1/2 flex justify-center reveal delay-100">
+                <!-- QR Construction Area -->
+                <div class="w-64 h-64 border border-[#222] bg-[#050505] p-4 flex items-center justify-center relative">
+                    <div id="playground-qr" class="opacity-80"></div>
+                    <!-- Grid Lines overlay -->
+                    <div class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(#111 1px, transparent 1px), linear-gradient(90deg, #111 1px, transparent 1px); background-size: 20px 20px; opacity: 0.5;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. USE CASES (Horizontal Scroll) -->
+    <section class="py-32 overflow-hidden">
+        <div class="px-6 mb-12 max-w-[1400px] mx-auto reveal">
+            <h2 class="font-display text-4xl font-bold">Na Prática</h2>
+        </div>
+        
+        <div class="flex overflow-x-auto pb-8 px-6 gap-6 no-scrollbar snap-x reveal delay-100">
+            <!-- Card 1 -->
+            <div class="min-w-[300px] md:min-w-[500px] h-[400px] bg-[#111] relative snap-center group overflow-hidden grayscale hover:grayscale-0 transition-all duration-700 noise-overlay hover-trigger">
+                <img src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=2070&auto=format&fit=crop" class="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-500">
+                <div class="absolute bottom-6 left-6 z-10">
+                    <h4 class="font-display text-2xl font-bold text-white">Hospitalidade</h4>
+                    <p class="text-xs font-mono text-gray-300 mt-1">Cardápio Digital V2</p>
+                </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="min-w-[300px] md:min-w-[500px] h-[400px] bg-[#111] relative snap-center group overflow-hidden grayscale hover:grayscale-0 transition-all duration-700 noise-overlay hover-trigger">
+                <img src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?q=80&w=2070&auto=format&fit=crop" class="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-500">
+                <div class="absolute bottom-6 left-6 z-10">
+                    <h4 class="font-display text-2xl font-bold text-white">Exposições</h4>
+                    <p class="text-xs font-mono text-gray-300 mt-1">Acesso Galeria Noturna</p>
+                </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="min-w-[300px] md:min-w-[500px] h-[400px] bg-[#111] relative snap-center group overflow-hidden grayscale hover:grayscale-0 transition-all duration-700 noise-overlay hover-trigger">
+                <img src="https://images.unsplash.com/photo-1634152962476-4b8a00e1915c?q=80&w=2069&auto=format&fit=crop" class="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-500">
+                <div class="absolute bottom-6 left-6 z-10">
+                    <h4 class="font-display text-2xl font-bold text-white">Networking</h4>
+                    <p class="text-xs font-mono text-gray-300 mt-1">Cartão de Visita Fosco</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. PRICING -->
+    <section class="py-32 px-6 max-w-[1400px] mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
+            
+            <!-- Free -->
+            <div class="p-8 border border-[#222] reveal">
+                <h3 class="font-display text-xl mb-4">Básico</h3>
+                <div class="text-4xl font-bold mb-8">R$0</div>
+                <ul class="space-y-4 mb-8 text-sm text-textGray">
+                    <li class="flex gap-3"><span class="text-white">◊</span> QRs Estáticos Ilimitados</li>
+                    <li class="flex gap-3"><span class="text-white">◊</span> Resolução Padrão</li>
+                    <li class="flex gap-3"><span class="text-white">◊</span> Download em PNG</li>
+                </ul>
+                <button class="w-full py-3 border border-[#333] text-sm hover:border-white transition-colors hover-trigger">Começar</button>
+            </div>
+
+            <!-- Pro -->
+            <div class="p-8 border border-white bg-deepBlack relative overflow-hidden group reveal delay-100">
+                <!-- Inner Smoke Leak -->
+                <div class="absolute -top-20 -right-20 w-64 h-64 bg-white opacity-5 blur-[80px] pointer-events-none"></div>
+                
+                <h3 class="font-display text-xl mb-4 text-white">Pro</h3>
+                <div class="text-4xl font-bold mb-8 text-white">R$49<span class="text-sm font-normal text-gray-500">/mês</span></div>
+                <ul class="space-y-4 mb-8 text-sm text-gray-300">
+                    <li class="flex gap-3"><span class="text-white">◊</span> Rastreamento Dinâmico</li>
+                    <li class="flex gap-3"><span class="text-white">◊</span> Vetorial (SVG, EPS)</li>
+                    <li class="flex gap-3"><span class="text-white">◊</span> Sem Marca D'água</li>
+                    <li class="flex gap-3"><span class="text-white">◊</span> Painel de Analytics</li>
+                </ul>
+                <button class="w-full py-3 bg-white text-black font-bold text-sm hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-shadow hover-trigger">Mudar para Pro</button>
+            </div>
+
+            <!-- Agency -->
+            <div class="p-8 border border-[#222] reveal delay-200">
+                <h3 class="font-display text-xl mb-4">Agência</h3>
+                <div class="text-4xl font-bold mb-8">R$149<span class="text-sm font-normal text-gray-500">/mês</span></div>
+                <ul class="space-y-4 mb-8 text-sm text-textGray">
+                    <li class="flex gap-3"><span class="text-white">◊</span> Acesso à API</li>
+                    <li class="flex gap-3"><span class="text-white">◊</span> Gestão de Equipe</li>
+                    <li class="flex gap-3"><span class="text-white">◊</span> White Label</li>
+                </ul>
+                <button class="w-full py-3 border border-[#333] text-sm hover:border-white transition-colors hover-trigger">Falar com Vendas</button>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- 7. FOOTER -->
+    <footer class="pt-20 border-t border-[#222] bg-deepBlack relative overflow-hidden">
+        <div class="max-w-[1400px] mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12 mb-32">
+            <div>
+                <a href="#" class="font-display font-bold text-xl tracking-tight block mb-6">QRGEN</a>
+                <p class="text-xs text-[#555]">© 2024 Deep Noir Inc.<br>Todos os direitos reservados.</p>
+            </div>
+            
+            <div class="space-y-4">
+                <h4 class="text-white font-medium">Produto</h4>
+                <a href="#" class="block text-sm text-[#666] hover:text-white transition-colors hover-trigger">Atualizações</a>
+                <a href="#" class="block text-sm text-[#666] hover:text-white transition-colors hover-trigger">Documentação</a>
+                <a href="#" class="block text-sm text-[#666] hover:text-white transition-colors hover-trigger">API</a>
+            </div>
+
+            <div class="space-y-4">
+                <h4 class="text-white font-medium">Empresa</h4>
+                <a href="#" class="block text-sm text-[#666] hover:text-white transition-colors hover-trigger">Manifesto</a>
+                <a href="#" class="block text-sm text-[#666] hover:text-white transition-colors hover-trigger">Carreiras</a>
+                <a href="#" class="block text-sm text-[#666] hover:text-white transition-colors hover-trigger">Contato</a>
+            </div>
+
+            <div class="space-y-4">
+                <h4 class="text-white font-medium">Legal</h4>
+                <a href="#" class="block text-sm text-[#666] hover:text-white transition-colors hover-trigger">Privacidade</a>
+                <a href="#" class="block text-sm text-[#666] hover:text-white transition-colors hover-trigger">Termos</a>
+            </div>
+        </div>
+
+        <!-- Monumental Easter Egg Text -->
+        <div class="w-full flex justify-center pointer-events-none select-none">
+            <h1 class="text-[15vw] leading-[0.8] font-display font-bold text-transparent" style="-webkit-text-stroke: 1px rgba(255,255,255,0.05);">QRGEN</h1>
+        </div>
+    </footer>
+
+    <!-- SCRIPTS -->
+    <script>
+        // Custom Cursor Logic
+        const cursor = document.getElementById('cursor');
+        const triggers = document.querySelectorAll('.hover-trigger');
+
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        triggers.forEach(trigger => {
+            trigger.addEventListener('mouseenter', () => cursor.classList.add('hovered'));
+            trigger.addEventListener('mouseleave', () => cursor.classList.remove('hovered'));
+        });
+
+        // Scroll Reveal Logic using Intersection Observer
+        const revealElements = document.querySelectorAll('.reveal');
+        
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    revealObserver.unobserve(entry.target); // Reveal only once
+                }
+            });
+        }, {
+            threshold: 0.1,
+            rootMargin: "0px 0px -50px 0px"
+        });
+
+        revealElements.forEach(el => revealObserver.observe(el));
+
+        // Interactive Playground Logic
+        const input = document.getElementById('playground-input');
+        const qrContainer = document.getElementById('playground-qr');
+        const cta = document.getElementById('playground-cta');
+        let qrCodeObj = null;
+
+        input.addEventListener('keyup', () => {
+            const val = input.value;
+            
+            // Show QR logic
+            qrContainer.innerHTML = ''; // Clear prev
+            
+            if (val.length > 0) {
+                // Generate new
+                qrCodeObj = new QRCode(qrContainer, {
+                    text: val,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#FFFFFF",
+                    colorLight : "#050505", // Matches background
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+                
+                // Show CTA
+                cta.style.opacity = '1';
+                cta.style.transform = 'translateY(0)';
+            } else {
+                cta.style.opacity = '0';
+            }
+        });
+    </script>
+</body>
+</html>
